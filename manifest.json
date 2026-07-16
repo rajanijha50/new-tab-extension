@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "New Tab Dashboard",
+  "version": "1.0.0",
+  "description": "Replace your New Tab page with a customizable glassmorphic dashboard.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://api.quotable.io/*",
+    "https://zenquotes.io/*",
+    "https://api.adviceslip.com/*"
+  ],
+  "chrome_url_overrides": {
+    "newtab": "src/pages/newtab/index.html"
+  },
+  "action": {
+    "default_popup": "src/pages/popup/index.html",
+    "default_title": "New Tab Dashboard Settings",
+    "default_icon": {
+      "16": "public/assets/icons/icon-16.png",
+      "32": "public/assets/icons/icon-32.png",
+      "128": "public/assets/icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "public/assets/icons/icon-16.png",
+    "32": "public/assets/icons/icon-32.png",
+    "128": "public/assets/icons/icon-128.png"
+  },
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "options_page": "src/pages/options/index.html"
+}
