@@ -128,25 +128,13 @@ export const OptionsApp: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Quote API</label>
-                <div className="flex flex-col gap-2">
-                  {([
-                    { value: 'quotable', label: 'Quotable.io' },
-                    { value: 'zenquotes', label: 'ZenQuotes' },
-                    { value: 'adviceslip', label: 'Advice Slip' },
-                  ] as { value: UserSettings['quoteApi']; label: string }[]).map(({ value, label }) => (
-                    <label key={value} className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="radio"
-                        name="quoteApi"
-                        value={value}
-                        checked={settings.quoteApi === value}
-                        onChange={() => updateSetting('quoteApi', value)}
-                        className="accent-accent-primary w-4 h-4"
-                      />
-                      <span className="text-sm group-hover:text-accent-primary transition-colors">{label}</span>
-                    </label>
-                  ))}
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Quote Source</label>
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/10 dark:bg-white/5 border border-white/10">
+                  <span className="text-lg">🌿</span>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">ZenQuotes.io</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">Daily inspirational quote — refreshes every 24 hours</p>
+                  </div>
                 </div>
               </div>
             </GlassCard>

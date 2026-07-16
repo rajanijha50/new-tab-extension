@@ -1,9 +1,11 @@
 import type { Quote } from '../types/quote';
-import type { QuoteApiType } from '../types/settings';
 
 const CACHE_KEY = 'cached_quote';
 const CACHE_TIME_KEY = 'cached_quote_timestamp';
-const CACHE_TTL = 3600000; // 1 hour in ms
+const CACHE_DATE_KEY = 'cached_quote_date';
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours in ms
+
+const ZENQUOTES_URL = 'https://zenquotes.io/api/today';
 
 const FALLBACK_QUOTES: Quote[] = [
   { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
@@ -19,94 +21,74 @@ const FALLBACK_QUOTES: Quote[] = [
 ];
 
 class QuoteService {
-  private apiType: QuoteApiType = 'quotable';
-
-  setApiType(type: QuoteApiType): void {
-    this.apiType = type;
-  }
 
   clearCache(): void {
     localStorage.removeItem(CACHE_KEY);
     localStorage.removeItem(CACHE_TIME_KEY);
+    localStorage.removeItem(CACHE_DATE_KEY);
   }
 
-  getAvailableApis(): Record<QuoteApiType, string> {
-    return {
-      quotable: 'https://api.quotable.io/random',
-      zenquotes: 'https://zenquotes.io/api/random',
-      adviceslip: 'https://api.adviceslip.com/advice',
-    };
-  }
+  async getDailyQuote(forceRefresh: boolean = false): Promise<Quote> {
+    const today = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
 
-  async getRandomQuote(forceRefresh: boolean = false): Promise<Quote> {
     if (!forceRefresh) {
       const cachedStr = localStorage.getItem(CACHE_KEY);
       const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
-      
-      if (cachedStr && cachedTime) {
+      const cachedDate = localStorage.getItem(CACHE_DATE_KEY);
+
+      // Valid cache: same calendar day AND within 24 hours
+      if (cachedStr && cachedTime && cachedDate === today) {
         const parsedTime = parseInt(cachedTime, 10);
         if (Date.now() - parsedTime < CACHE_TTL) {
           try {
             return JSON.parse(cachedStr) as Quote;
           } catch {
-            // ignore error, fetch fresh
+            // corrupt cache — fall through to fetch
           }
         }
       }
     }
 
     try {
-      const quote = await this.fetchWithTimeout();
+      const quote = await this.fetchQuote();
+      console.log("fetched quote: ", quote)
       localStorage.setItem(CACHE_KEY, JSON.stringify(quote));
       localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+      localStorage.setItem(CACHE_DATE_KEY, today);
       return quote;
     } catch (e) {
-      console.warn("Failed to fetch quote, returning fallback:", e);
+      console.warn('Failed to fetch daily quote, returning fallback:', e);
       const randomIndex = Math.floor(Math.random() * FALLBACK_QUOTES.length);
       return FALLBACK_QUOTES[randomIndex];
     }
   }
 
-  private async fetchWithTimeout(): Promise<Quote> {
+  private async fetchQuote(): Promise<Quote> {
     const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 5000);
-
-    const apiUrls = this.getAvailableApis();
-    const url = apiUrls[this.apiType];
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     try {
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(id);
+      const res = await fetch(ZENQUOTES_URL, { signal: controller.signal });
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
 
       const data = await res.json();
-      return this.parseResponse(data);
-    } catch (err) {
-      clearTimeout(id);
-      throw err;
-    }
-  }
 
-  private parseResponse(data: any): Quote {
-    if (this.apiType === 'quotable') {
-      if (data && data.content && data.author) {
-        return { text: data.content, author: data.author };
-      }
-    } else if (this.apiType === 'zenquotes') {
       if (Array.isArray(data) && data[0] && data[0].q && data[0].a) {
         return { text: data[0].q, author: data[0].a };
       }
-    } else if (this.apiType === 'adviceslip') {
-      if (data && data.slip && data.slip.advice) {
-        return { text: data.slip.advice, author: 'Advice Slip' };
-      }
+
+      throw new Error('Unexpected response format from ZenQuotes');
+    } catch (err) {
+      clearTimeout(timeoutId);
+      throw err;
     }
-    throw new Error('Unknown response format or API error');
   }
 }
 
 export const quoteService = new QuoteService();
 export default quoteService;
+

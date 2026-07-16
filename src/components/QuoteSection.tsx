@@ -17,7 +17,7 @@ export const QuoteSection: React.FC = () => {
     // Smooth delay for animation to prevent harsh jump
     setTimeout(async () => {
       try {
-        const data = await quoteService.getRandomQuote(force);
+        const data = await quoteService.getDailyQuote(force);
         setQuote(data);
       } catch (e) {
         console.error('Failed to get quote:', e);
@@ -40,8 +40,8 @@ export const QuoteSection: React.FC = () => {
           onClick={() => fetchQuote(true)}
           disabled={loading}
           className="absolute top-3 right-3 p-2 rounded-xl text-gray-400 hover:text-current hover:bg-white/15 dark:hover:bg-white/5 transition-all duration-200 cursor-pointer disabled:opacity-50"
-          title="Refresh quote"
-          aria-label="Refresh quote"
+          title="Refresh today's quote"
+          aria-label="Refresh today's quote"
         >
           <MdRefresh
             className={clsx('text-xl transition-transform duration-700', loading && 'animate-spin')}

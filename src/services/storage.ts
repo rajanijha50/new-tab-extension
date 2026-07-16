@@ -154,7 +154,7 @@ class StorageManager {
     await this.clearAllLinks();
     localStorage.removeItem('pref_theme');
     localStorage.removeItem('custom_categories');
-    const prefKeys: Array<keyof UserSettings> = ['theme', 'quoteApi', 'glassBlur', 'glassOpacity', 'wallpaper'];
+    const prefKeys: Array<keyof UserSettings> = ['theme', 'glassBlur', 'glassOpacity', 'wallpaper'];
     for (const key of prefKeys) {
       localStorage.removeItem(`pref_${key}`);
     }
@@ -181,7 +181,6 @@ class StorageManager {
   private getAllPreferences(): UserSettings {
     return {
       theme: this.getPreference<UserSettings['theme']>('theme', 'auto'),
-      quoteApi: this.getPreference<UserSettings['quoteApi']>('quoteApi', 'quotable'),
       glassBlur: this.getPreference<UserSettings['glassBlur']>('glassBlur', 10),
       glassOpacity: this.getPreference<UserSettings['glassOpacity']>('glassOpacity', 0.7),
       wallpaper: this.getPreference<UserSettings['wallpaper']>('wallpaper', null),
