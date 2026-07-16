@@ -71,12 +71,8 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
               onClick={(e) => e.stopPropagation()}
               className="text-xs py-2 px-3 rounded-lg bg-white/20 dark:bg-white/5 hover:bg-white/40 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 truncate hover:text-accent-primary dark:hover:text-accent-primary transition-all duration-150 flex items-center justify-between border border-white/5"
             >
-              <img src={`${link.url}/favicon.ico`} alt={link.title} className="w-4 h-4 mr-2" />
-              {/* <span className="truncate mr-2 font-medium">{link.title || link.domain}</span> */}
-              <span className="truncate mr-2 font-medium">{LinkFormatter.getTitleFromUrl(link.url)}</span>
-              {/* <span className="text-[9px] text-gray-400 dark:text-gray-500 truncate max-w-[40%] font-mono">
-                {link.domain}
-              </span> */}
+              <img src={link.icon || LinkFormatter.getIconFromUrl(link.url)} alt={link.title} className="w-4 h-4 mr-2" />
+              <span className="truncate mr-2 font-medium">{link.title || link.domain}</span>
             </a>
           ))
         ) : (

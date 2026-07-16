@@ -6,6 +6,7 @@ import { useLinksStore } from '../../store/linksStore';
 import { useCategoriesStore } from '../../store/categoriesStore';
 import { useToastStore } from '../../store/toastStore';
 import { categorizer } from '../../services/categorizer';
+import LinkFormatter from '../../services/formatter';
 
 interface AddLinkModalProps {
   isOpen: boolean;
@@ -19,8 +20,37 @@ export const AddLinkModal: React.FC<AddLinkModalProps> = ({ isOpen, onClose }) =
 
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [icon, setIcon] = useState('');
   const [category, setCategory] = useState('auto-detect');
   const [loading, setLoading] = useState(false);
+
+  const handleUrlBlur = async () => {
+    let normalizedUrl = url.trim();
+    if (!normalizedUrl) return;
+
+    if (!/^https?:\/\//i.test(normalizedUrl)) {
+      normalizedUrl = 'https://' + normalizedUrl;
+    }
+
+    setLoading(true);
+    try {
+      const metadata = await LinkFormatter.fetchMetadata(normalizedUrl);
+      if (metadata.title && !title.trim()) {
+        setTitle(metadata.title);
+      }
+      if (metadata.description && !description.trim()) {
+        setDescription(metadata.description);
+      }
+      if (metadata.icon) {
+        setIcon(metadata.icon);
+      }
+    } catch (err) {
+      console.error('Failed to auto-fetch metadata:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,19 +72,32 @@ export const AddLinkModal: React.FC<AddLinkModalProps> = ({ isOpen, onClose }) =
         selectedCategory = categorizer.categorize(normalizedUrl);
       }
 
-      const finalTitle = title.trim() || domain;
+      let finalTitle = title.trim();
+      let finalIcon = icon.trim();
+      let finalDesc = description.trim();
+
+      if (!finalTitle || !finalIcon) {
+        const metadata = await LinkFormatter.fetchMetadata(normalizedUrl);
+        if (!finalTitle) finalTitle = metadata.title || domain;
+        if (!finalIcon) finalIcon = metadata.icon;
+        if (!finalDesc) finalDesc = metadata.description;
+      }
 
       await addLink({
         url: normalizedUrl,
-        title: finalTitle,
+        title: finalTitle || domain,
         domain,
         category: selectedCategory,
         timestamp: Date.now(),
+        icon: finalIcon || LinkFormatter.getIconFromUrl(normalizedUrl),
+        description: finalDesc,
       });
 
       showToast('Link added successfully', 'success');
       setUrl('');
       setTitle('');
+      setDescription('');
+      setIcon('');
       setCategory('auto-detect');
       onClose();
     } catch (err: any) {
@@ -76,6 +119,7 @@ export const AddLinkModal: React.FC<AddLinkModalProps> = ({ isOpen, onClose }) =
             placeholder="e.g. github.com/facebook"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
+            onBlur={handleUrlBlur}
             required
             autoFocus
           />
@@ -90,6 +134,18 @@ export const AddLinkModal: React.FC<AddLinkModalProps> = ({ isOpen, onClose }) =
             placeholder="e.g. GitHub"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
+            Description (Optional)
+          </label>
+          <GlassInput
+            type="text"
+            placeholder="e.g. A premium dashboard extension"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
           />
         </div>
 

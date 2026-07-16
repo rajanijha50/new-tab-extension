@@ -5,4 +5,6 @@ export interface Link {
   domain: string;
   category: string;
   timestamp: number;
+  icon?: string;
+  description?: string;
 }
