@@ -5,9 +5,7 @@
   "description": "Replace your New Tab page with a customizable glassmorphic dashboard.",
   "permissions": ["storage"],
   "host_permissions": [
-    "https://api.quotable.io/*",
     "https://zenquotes.io/*",
-    "https://api.adviceslip.com/*",
     "*://*/*"
   ],
   "chrome_url_overrides": {

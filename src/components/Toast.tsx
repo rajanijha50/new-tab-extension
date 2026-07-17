@@ -7,15 +7,15 @@ const Toast: React.FC<{ toast: ToastItem }> = ({ toast }) => {
   const { removeToast } = useToastStore();
 
   const bgColors = {
-    success: 'bg-accent-secondary/90 border-accent-secondary/30 text-white',
-    error: 'bg-accent-danger/90 border-accent-danger/30 text-white',
-    info: 'bg-accent-primary/90 border-accent-primary/30 text-white',
+    success: 'bg-accent-secondary border-accent-secondary/30 text-white',
+    error: 'bg-accent-danger border-accent-danger/30 text-white',
+    info: 'bg-accent-primary border-accent-primary/30 text-white',
   };
 
   return (
     <div
       className={clsx(
-        'glass flex items-center justify-between gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm min-w-[240px] max-w-sm backdrop-blur-md transition-all duration-300',
+        'flex items-center justify-between gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm min-w-[240px] max-w-sm backdrop-blur-md transition-all duration-300 animate-slide-in-left',
         bgColors[toast.type]
       )}
       role="alert"

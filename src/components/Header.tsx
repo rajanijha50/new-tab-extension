@@ -8,12 +8,14 @@ interface HeaderProps {
   searchQuery: string;
   onSearchChange: (value: string) => void;
   onSettingsClick: () => void;
+  leftSlot?: React.ReactNode;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   searchQuery,
   onSearchChange,
   onSettingsClick,
+  leftSlot,
 }) => {
   const { settings, updateSetting } = useSettingsStore();
 
@@ -46,9 +48,10 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full px-6 py-4 flex items-center justify-between backdrop-blur-md bg-white/5 dark:bg-black/5 border-b border-white/10">
-      {/* Title */}
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-40 w-full px-6 py-4 flex items-center justify-between backdrop-blur-xl bg-white/60 dark:bg-black/40 border-b border-white/15 dark:border-white/8 shadow-sm shadow-black/5 dark:shadow-black/20">
+      {/* Left: Title + optional slot */}
+      <div className="flex items-center gap-3 shrink-0">
+        {leftSlot}
         <h1 className="text-2xl font-black tracking-wide bg-linear-to-r from-accent-primary via-accent-violet to-accent-rose bg-clip-text text-transparent">
           Dashboard
         </h1>
@@ -66,10 +69,10 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 shrink-0">
         <button
           onClick={handleThemeToggle}
-          className="p-2.5 rounded-xl glass bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 border-white/20 dark:border-white/5 text-current transition-all duration-200 cursor-pointer active:scale-95"
+          className="p-2.5 rounded-xl glass hover:bg-white/25 dark:hover:bg-white/10 text-current transition-all duration-200 cursor-pointer active:scale-95"
           title={getThemeLabel()}
           aria-label="Toggle theme"
         >
@@ -78,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={onSettingsClick}
-          className="p-2.5 rounded-xl glass bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 border-white/20 dark:border-white/5 text-current transition-all duration-200 cursor-pointer active:scale-95"
+          className="p-2.5 rounded-xl glass hover:bg-white/25 dark:hover:bg-white/10 text-current transition-all duration-200 cursor-pointer active:scale-95"
           title="Open settings"
           aria-label="Open settings"
         >

@@ -10,7 +10,7 @@ export default class LinkFormatter {
         try {
             const parsedUrl = new URL(url);
             return `${parsedUrl.origin}/favicon.ico`;
-        } catch (e) {
+        } catch {
             console.error('Invalid URL:', url);
             return '';
         }
@@ -20,7 +20,7 @@ export default class LinkFormatter {
         try {
             const metadata = await this.fetchMetadata(url);
             return metadata.title;
-        } catch (e) {
+        } catch {
             return url;
         }
     }
@@ -33,10 +33,58 @@ export default class LinkFormatter {
             '&quot;': '"',
             '&#39;': "'",
             '&apos;': "'",
-            '&ndash;': '–',
-            '&mdash;': '—'
+            '&ndash;': '\u2013',
+            '&mdash;': '\u2014',
+            '&nbsp;': ' ',
+            '&rsquo;': '\u2019',
+            '&lsquo;': '\u2018',
+            '&rdquo;': '\u201d',
+            '&ldquo;': '\u201c',
+            '&hellip;': '\u2026',
+            '&trade;': '\u2122',
+            '&reg;': '\u00ae',
+            '&copy;': '\u00a9'
         };
-        return text.replace(/&(?:amp|lt|gt|quot|#39|apos|ndash|mdash);/g, (match) => entities[match] || match);
+        return text.replace(/&(?:amp|lt|gt|quot|#39|apos|ndash|mdash|nbsp|rsquo|lsquo|rdquo|ldquo|hellip|trade|reg|copy);/g, (match) => entities[match] || match);
+    }
+
+    static cleanTitle(raw: string): string {
+        if (!raw) return raw;
+
+        let title = raw;
+
+        // 1. Decode HTML entities first
+        title = this.decodeHTMLEntities(title);
+
+        // 2. Strip content in brackets: [PDF], (Official), {Blog}
+        title = title.replace(/\[.*?\]/g, '').trim();
+        title = title.replace(/\(.*?\)/g, '').trim();
+        title = title.replace(/\{.*?\}/g, '').trim();
+
+        // 3. Remove emojis using Unicode property escapes
+        title = title.replace(/\p{Emoji_Presentation}/gu, '');
+        title = title.replace(/\p{Emoji}\uFE0F/gu, '');
+        title = title.replace(/[\u200D]/g, '');
+        title = title.trim();
+
+        // 4. Strip site name suffixes: " | SiteName", " - SiteName", " :: SiteName"
+        title = title.replace(/\s*[|–—:]+\s*\S+\s*$/i, '').trim();
+
+        // 5. Remove trailing/leading separators
+        title = title.replace(/^[\s|–—:.,\-\u2022]+|[\s|–—:.,\-\u2022]+$/g, '').trim();
+
+        // 6. Collapse multiple whitespace
+        title = title.replace(/\s{2,}/g, ' ').trim();
+
+        // 7. Remove zero-width characters and invisible unicode
+        title = title.replace(/[\u200B-\u200D\uFEFF\u200E\u200F]/g, '').trim();
+
+        // 8. Truncate to 60 chars
+        if (title.length > 60) {
+            title = title.slice(0, 57).trimEnd() + '...';
+        }
+
+        return title;
     }
 
     static async fetchMetadata(url: string): Promise<SiteMetadata> {
@@ -51,7 +99,7 @@ export default class LinkFormatter {
             const parsedUrl = new URL(normalizedUrl);
             origin = parsedUrl.origin;
             hostname = parsedUrl.hostname;
-        } catch (e) {
+        } catch {
             // fallback if URL construction fails
         }
 
@@ -77,21 +125,22 @@ export default class LinkFormatter {
                 // 1. Title Extraction
                 const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
                 if (titleMatch && titleMatch[1]) {
-                    title = this.decodeHTMLEntities(titleMatch[1].trim());
+                    title = this.cleanTitle(titleMatch[1].trim());
                 }
 
                 // Helper to get meta contents robustly
                 const getMetaContent = (name: string): string | null => {
                     const attrOrderRegex = new RegExp(`<meta[^>]*(?:property|name)\\s*=\\s*["']${name}["'][^>]*content\\s*=\\s*["']([^"']+)["'][^>]*>`, 'i');
-                    const reverseOrderRegex = new RegExp(`<meta[^]*content\\s*=\\s*["']([^"']+)["'][^>]*(?:property|name)\\s*=\\s*["']${name}["'][^>]*>`, 'i');
+                    const reverseOrderRegex = new RegExp(`<meta[^>]*content\\s*=\\s*["']([^"']+)["'][^>]*(?:property|name)\\s*=\\s*["']${name}["'][^>]*>`, 'i');
                     const match = html.match(attrOrderRegex) || html.match(reverseOrderRegex);
-                    return match ? this.decodeHTMLEntities(match[1].trim()) : null;
+                    return match ? this.cleanTitle(match[1].trim()) : null;
                 };
 
                 // 2. Description Extraction
-                const standardDesc = getMetaContent('description');
-                if (standardDesc) {
-                    description = standardDesc;
+                const standardDesc = html.match(/<meta[^>]*name\s*=\s*["']description["'][^>]*content\s*=\s*["']([^"']+)["'][^>]*>/i)
+                    || html.match(/<meta[^>]*content\s*=\s*["']([^"']+)["'][^>]*name\s*=\s*["']description["'][^>]*>/i);
+                if (standardDesc && standardDesc[1]) {
+                    description = this.decodeHTMLEntities(standardDesc[1].trim());
                 }
 
                 // 3. Fallback Title/Description (Open Graph / Twitter)
@@ -113,7 +162,7 @@ export default class LinkFormatter {
                 for (const regex of iconRegexes) {
                     const match = html.match(regex);
                     if (match && match[1]) {
-                        let href = match[1].trim();
+                        const href = match[1].trim();
                         if (href.startsWith('//')) {
                             icon = 'https:' + href;
                         } else if (href.startsWith('/')) {
@@ -127,8 +176,8 @@ export default class LinkFormatter {
                     }
                 }
             }
-        } catch (e) {
-            console.error('Failed to fetch metadata for URL:', normalizedUrl, e);
+        } catch {
+            console.error('Failed to fetch metadata for URL:', normalizedUrl);
         }
 
         return {

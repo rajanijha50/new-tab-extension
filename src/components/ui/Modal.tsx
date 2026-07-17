@@ -45,17 +45,17 @@ export const Modal: React.FC<ModalProps> = ({
     <div
       ref={overlayRef}
       onClick={handleBackdropClick}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 dark:bg-black/60 backdrop-blur-[2px] transition-all duration-300"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 dark:bg-black/60 backdrop-blur-[2px] animate-fade-in"
       role="dialog"
       aria-modal="true"
     >
-      <GlassCard className="w-full max-w-lg p-6 flex flex-col max-h-[85vh] relative shadow-2xl border-white/30 dark:border-white/10">
+      <GlassCard className="w-full max-w-lg p-6 flex flex-col max-h-[85vh] relative shadow-2xl border-white/30 dark:border-white/10 animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-white/15 dark:border-white/10">
           <h2 className="text-xl font-bold tracking-wide">{title}</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-white/15 dark:hover:bg-white/5 transition-colors cursor-pointer text-gray-500 hover:text-current focus:outline-none"
+            className="p-1.5 rounded-lg hover:bg-white/15 dark:hover:bg-white/10 transition-colors cursor-pointer text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 focus:outline-none"
             aria-label="Close modal"
           >
             <MdClose className="text-2xl" />

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Header } from '../components/Header';
 import { QuoteSection } from '../components/QuoteSection';
 import { CategoriesGrid } from '../components/CategoriesGrid';
+import { TodoWidget } from '../components/TodoWidget';
 import { FAB } from '../components/FAB';
 import { ToastContainer } from '../components/Toast';
 import { AddLinkModal } from '../components/modals/AddLinkModal';
@@ -48,6 +49,7 @@ export const NewTabApp: React.FC = () => {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onSettingsClick={openSettingsPage}
+        leftSlot={<TodoWidget />}
       />
 
       {/* Quote Section */}

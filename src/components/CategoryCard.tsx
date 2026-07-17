@@ -42,8 +42,8 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-md shadow-black/10 bg-white/20"
-            // style={{ backgroundColor: info.color }}
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-md"
+            style={{ backgroundColor: info.color }}
           >
             <IconRenderer name={info.icon} />
           </div>
@@ -69,7 +69,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="text-xs py-2 px-3 rounded-lg bg-white/20 dark:bg-white/5 hover:bg-white/40 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 truncate hover:text-accent-primary dark:hover:text-accent-primary transition-all duration-150 flex items-center justify-between border border-white/5"
+              className="text-xs py-2 px-3 rounded-lg bg-white/20 dark:bg-white/5 hover:bg-white/40 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 truncate hover:text-accent-primary dark:hover:text-accent-primary transition-all duration-150 flex items-center justify-start border border-white/5"
             >
               <img src={link.icon || LinkFormatter.getIconFromUrl(link.url)} alt={link.title} className="w-4 h-4 mr-2" />
               <span className="truncate mr-2 font-medium">{link.title || link.domain}</span>

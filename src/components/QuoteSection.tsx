@@ -33,13 +33,16 @@ export const QuoteSection: React.FC = () => {
   }, []);
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-6 py-4">
+    <div className="w-full max-w-3xl mx-auto px-6 py-4 animate-fade-in">
       <GlassCard className="relative flex flex-col items-center text-center p-8 overflow-hidden min-h-[140px] justify-center">
+        {/* Decorative gradient overlay */}
+        <div className="absolute inset-0 bg-linear-to-br from-accent-primary/5 via-transparent to-accent-rose/5 dark:from-accent-primary/3 dark:to-accent-rose/3 pointer-events-none rounded-2xl" />
+
         {/* Refresh button */}
         <button
           onClick={() => fetchQuote(true)}
           disabled={loading}
-          className="absolute top-3 right-3 p-2 rounded-xl text-gray-400 hover:text-current hover:bg-white/15 dark:hover:bg-white/5 transition-all duration-200 cursor-pointer disabled:opacity-50"
+          className="absolute top-3 right-3 p-2 rounded-xl text-gray-400 dark:text-gray-500 hover:text-accent-primary hover:bg-white/15 dark:hover:bg-white/10 transition-all duration-200 cursor-pointer disabled:opacity-50"
           title="Refresh today's quote"
           aria-label="Refresh today's quote"
         >
@@ -51,21 +54,21 @@ export const QuoteSection: React.FC = () => {
         {/* Quote body */}
         <div
           className={clsx(
-            'transition-opacity duration-300 flex flex-col items-center gap-2 max-w-[90%]',
-            fade ? 'opacity-100' : 'opacity-0'
+            'relative z-10 transition-all duration-300 flex flex-col items-center gap-2 max-w-[90%]',
+            fade ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'
           )}
         >
           {quote ? (
             <>
               <p className="text-lg md:text-xl font-medium italic text-gray-800 dark:text-gray-100 leading-relaxed">
-                “{quote.text}”
+                &ldquo;{quote.text}&rdquo;
               </p>
-              <p className="text-xs md:text-sm font-semibold tracking-wider text-accent-primary uppercase mt-1">
-                — {quote.author || 'Unknown'}
+              <p className="text-xs md:text-sm font-semibold tracking-wider text-accent-primary mt-1">
+                &mdash; {quote.author || 'Unknown'}
               </p>
             </>
           ) : (
-            <div className="h-6 w-48 bg-gray-200 dark:bg-gray-800 animate-pulse rounded" />
+            <div className="h-6 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
           )}
         </div>
       </GlassCard>
