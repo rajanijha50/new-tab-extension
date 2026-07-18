@@ -53,7 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-3 shrink-0">
         {leftSlot}
         <h1 className="text-2xl font-black tracking-wide bg-linear-to-r from-accent-primary via-accent-violet to-accent-rose bg-clip-text text-transparent">
-          Dashboard
+          Extention
         </h1>
       </div>
 
