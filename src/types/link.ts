@@ -3,8 +3,12 @@ export interface Link {
   url: string;
   title: string;
   domain: string;
-  category: string;
   timestamp: number;
   icon?: string;
   description?: string;
+  folderId: number | null;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }

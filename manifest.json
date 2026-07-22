@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Replace your New Tab page with a customizable glassmorphic dashboard.",
   "permissions": ["storage"],
+  "optional_permissions": ["bookmarks"],
   "host_permissions": [
     "https://zenquotes.io/*",
     "*://*/*"

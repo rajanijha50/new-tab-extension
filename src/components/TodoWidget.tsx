@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MdCheckCircle, MdCheck, MdClose, MdDeleteSweep, MdChecklist } from 'react-icons/md';
+import { MdCheck, MdClose, MdDeleteSweep } from 'react-icons/md';
 import { useTodosStore } from '../store/todosStore';
 import clsx from 'clsx';
 import { LuListTodo } from 'react-icons/lu';

@@ -6,6 +6,11 @@ import { themeManager } from '../services/theme';
 interface SettingsState {
   settings: UserSettings;
   updateSetting: <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => void;
+  setGlassBlur: (blur: number) => void;
+  setGlassOpacity: (opacity: number) => void;
+  setWallpaper: (wallpaper: string | null) => void;
+  setTheme: (theme: UserSettings['theme']) => void;
+  toggleShowLinkName: () => void;
   loadSettings: () => void;
 }
 
@@ -14,6 +19,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   glassBlur: 10,
   glassOpacity: 0.7,
   wallpaper: null,
+  showLinkName: true,
 };
 
 function applyStylesToDocument(settings: UserSettings) {
@@ -22,27 +28,21 @@ function applyStylesToDocument(settings: UserSettings) {
   document.documentElement.style.setProperty('--glass-border-opacity', `${settings.glassOpacity > 0.6 ? 0.2 : 0.08}`);
 }
 
-export const useSettingsStore = create<SettingsState>((set) => ({
+export const useSettingsStore = create<SettingsState>((set, get) => ({
   settings: DEFAULT_SETTINGS,
 
   loadSettings: () => {
-    const theme = storage.getPreference<UserSettings['theme']>('theme', 'auto');
-    const glassBlur = storage.getPreference<UserSettings['glassBlur']>('glassBlur', 10);
-    const glassOpacity = storage.getPreference<UserSettings['glassOpacity']>('glassOpacity', 0.7);
-    const wallpaper = storage.getPreference<UserSettings['wallpaper']>('wallpaper', null);
-
     const loadedSettings: UserSettings = {
-      theme,
-      glassBlur,
-      glassOpacity,
-      wallpaper,
+      theme: storage.getPreference<UserSettings['theme']>('theme', 'auto'),
+      glassBlur: storage.getPreference<UserSettings['glassBlur']>('glassBlur', 10),
+      glassOpacity: storage.getPreference<UserSettings['glassOpacity']>('glassOpacity', 0.7),
+      wallpaper: storage.getPreference<UserSettings['wallpaper']>('wallpaper', null),
+      showLinkName: storage.getPreference<UserSettings['showLinkName']>('showLinkName', true),
     };
 
     set({ settings: loadedSettings });
-
-    // Apply styling rules
     applyStylesToDocument(loadedSettings);
-    themeManager.applyTheme(theme);
+    themeManager.applyTheme(loadedSettings.theme);
   },
 
   updateSetting: (key, value) => {
@@ -50,7 +50,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 
     set((state) => {
       const nextSettings = { ...state.settings, [key]: value };
-
       applyStylesToDocument(nextSettings);
 
       if (key === 'theme') {
@@ -60,6 +59,27 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       return { settings: nextSettings };
     });
   },
-}));
-export default useSettingsStore;
 
+  setGlassBlur: (blur: number) => {
+    get().updateSetting('glassBlur', blur);
+  },
+
+  setGlassOpacity: (opacity: number) => {
+    get().updateSetting('glassOpacity', opacity);
+  },
+
+  setWallpaper: (wallpaper: string | null) => {
+    get().updateSetting('wallpaper', wallpaper);
+  },
+
+  setTheme: (theme: UserSettings['theme']) => {
+    get().updateSetting('theme', theme);
+  },
+
+  toggleShowLinkName: () => {
+    const current = get().settings.showLinkName;
+    get().updateSetting('showLinkName', !current);
+  },
+}));
+
+export default useSettingsStore;

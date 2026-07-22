@@ -1,44 +1,40 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSettingsStore } from '../store/settingsStore';
-import { useCategoriesStore } from '../store/categoriesStore';
-import { useLinksStore } from '../store/linksStore';
+import { useGridStore } from '../store/gridStore';
 import { useToastStore } from '../store/toastStore';
 import { storage } from '../services/storage';
+import { getBrowserBookmarks, convertBookmarksToGridItems } from '../services/bookmarkImporter';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
-import { AddCategoryModal } from '../components/modals/AddCategoryModal';
 import { ToastContainer } from '../components/Toast';
 import {
-  MdSettings, MdPalette, MdLink, MdCategory, MdInfo,
-  MdFileDownload, MdFileUpload, MdDelete, MdAdd
+  MdSettings, MdPalette, MdBookmark, MdStorage, MdInfo,
+  MdFileDownload, MdFileUpload, MdDelete
 } from 'react-icons/md';
-import type { UserSettings } from '../types/settings';
+import { FiSun, FiMoon, FiSliders } from 'react-icons/fi';
 
-type Section = 'general' | 'appearance' | 'links' | 'categories' | 'about';
+type Section = 'general' | 'appearance' | 'bookmarks' | 'about';
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'general', label: 'General', icon: <MdSettings /> },
   { id: 'appearance', label: 'Appearance', icon: <MdPalette /> },
-  { id: 'links', label: 'Links & Data', icon: <MdLink /> },
-  { id: 'categories', label: 'Categories', icon: <MdCategory /> },
+  { id: 'bookmarks', label: 'Bookmarks & Data', icon: <MdBookmark /> },
   { id: 'about', label: 'About', icon: <MdInfo /> },
 ];
 
 export const OptionsApp: React.FC = () => {
   const [activeSection, setActiveSection] = useState<Section>('general');
-  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { settings, loadSettings, updateSetting } = useSettingsStore();
-  const { categories, deleteCustomCategory, refreshCategories } = useCategoriesStore();
-  const { links, fetchAllLinks } = useLinksStore();
+  const { settings, loadSettings, setGlassBlur, setGlassOpacity, setWallpaper, setTheme, toggleShowLinkName } = useSettingsStore();
+  const { loadItems, setItems } = useGridStore();
   const { showToast } = useToastStore();
 
   useEffect(() => {
     loadSettings();
-    fetchAllLinks();
-    refreshCategories();
-  }, [loadSettings, fetchAllLinks, refreshCategories]);
+    loadItems();
+  }, [loadSettings, loadItems]);
 
   const handleExport = async () => {
     try {
@@ -47,12 +43,12 @@ export const OptionsApp: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `dashboard-backup-${Date.now()}.json`;
+      a.download = `prodx-dashboard-backup-${Date.now()}.json`;
       a.click();
       URL.revokeObjectURL(url);
       showToast('Data exported successfully', 'success');
-    } catch (e: any) {
-      showToast(e.message || 'Export failed', 'error');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Export failed', 'error');
     }
   };
 
@@ -67,22 +63,47 @@ export const OptionsApp: React.FC = () => {
         const text = await file.text();
         const data = JSON.parse(text);
         const result = await storage.importData(data);
-        await fetchAllLinks();
-        refreshCategories();
-        showToast(`Imported ${result.linksImported} links successfully`, 'success');
-      } catch (err: any) {
-        showToast(err.message || 'Import failed. Invalid JSON file.', 'error');
+        await loadItems();
+        loadSettings();
+        showToast(`Imported ${result.linksImported} grid items successfully`, 'success');
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : 'Import failed', 'error');
       }
     };
     input.click();
   };
 
+  const handleBookmarkImport = async () => {
+    try {
+      setImportStatus('Requesting browser permission & fetching bookmarks...');
+      const rawBookmarks = await getBrowserBookmarks();
+      if (!rawBookmarks || rawBookmarks.length === 0) {
+        setImportStatus('No browser bookmarks found or permission denied.');
+        showToast('No bookmarks found', 'info');
+        return;
+      }
+
+      const importedGridItems = convertBookmarksToGridItems(rawBookmarks);
+      if (importedGridItems.length === 0) {
+        setImportStatus('No bookmarks found to import.');
+        return;
+      }
+
+      await setItems(importedGridItems);
+      setImportStatus(`Successfully imported ${importedGridItems.length} bookmark items to your grid!`);
+      showToast(`Imported ${importedGridItems.length} bookmarks`, 'success');
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Failed to import bookmarks.';
+      setImportStatus(errMsg);
+      showToast(errMsg, 'error');
+    }
+  };
+
   const handleReset = async () => {
-    if (window.confirm('Are you sure? This will delete ALL links and reset all settings.')) {
+    if (window.confirm('Are you sure? This will delete ALL links, folders, and reset all settings.')) {
       await storage.reset();
-      await fetchAllLinks();
+      await loadItems();
       loadSettings();
-      refreshCategories();
       showToast('All data has been reset', 'info');
     }
   };
@@ -96,45 +117,78 @@ export const OptionsApp: React.FC = () => {
     }
     const reader = new FileReader();
     reader.onload = () => {
-      updateSetting('wallpaper', reader.result as string);
-      showToast('Wallpaper set', 'success');
+      setWallpaper(reader.result as string);
+      showToast('Wallpaper updated', 'success');
     };
     reader.readAsDataURL(file);
   };
+
+  const ToggleSwitch: React.FC<{ enabled: boolean; onToggle: () => void }> = ({ enabled, onToggle }) => (
+    <button
+      onClick={onToggle}
+      className={`relative w-11 h-6 rounded-full transition-colors duration-200 cursor-pointer ${
+        enabled ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
+      }`}
+    >
+      <div
+        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-200 ${
+          enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
+        }`}
+      />
+    </button>
+  );
 
   const renderSection = () => {
     switch (activeSection) {
       case 'general':
         return (
           <div className="flex flex-col gap-6">
-            <h2 className="text-2xl font-bold">General</h2>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">General Settings</h2>
             <GlassCard className="flex flex-col gap-5">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Theme</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Color Mode</label>
                 <div className="flex gap-3">
-                  {(['light', 'dark', 'auto'] as UserSettings['theme'][]).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => updateSetting('theme', t)}
-                      className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all duration-200 cursor-pointer capitalize ${
-                        settings.theme === t
-                          ? 'bg-accent-primary text-white border-accent-primary shadow-md shadow-accent-primary/25'
-                          : 'glass border-white/20 dark:border-white/10 hover:border-accent-primary/40'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
+                  <button
+                    onClick={() => setTheme('light')}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold border flex items-center gap-2 transition-all cursor-pointer ${
+                      settings.theme === 'light'
+                        ? 'bg-blue-500 text-white border-blue-500 shadow-md shadow-blue-500/25'
+                        : 'glass border-white/20 dark:border-white/10 hover:border-blue-500/40 text-slate-700 dark:text-slate-200'
+                    }`}
+                  >
+                    <FiSun /> Light
+                  </button>
+                  <button
+                    onClick={() => setTheme('dark')}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold border flex items-center gap-2 transition-all cursor-pointer ${
+                      settings.theme === 'dark'
+                        ? 'bg-blue-500 text-white border-blue-500 shadow-md shadow-blue-500/25'
+                        : 'glass border-white/20 dark:border-white/10 hover:border-blue-500/40 text-slate-700 dark:text-slate-200'
+                    }`}
+                  >
+                    <FiMoon /> Dark
+                  </button>
+                  <button
+                    onClick={() => setTheme('auto')}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold border flex items-center gap-2 transition-all cursor-pointer ${
+                      settings.theme === 'auto'
+                        ? 'bg-blue-500 text-white border-blue-500 shadow-md shadow-blue-500/25'
+                        : 'glass border-white/20 dark:border-white/10 hover:border-blue-500/40 text-slate-700 dark:text-slate-200'
+                    }`}
+                  >
+                    <FiSliders /> Auto
+                  </button>
                 </div>
               </div>
+
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Quote Source</label>
-                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/10 dark:bg-white/5 border border-white/10">
-                  <span className="text-lg">🌿</span>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Link Title Display</label>
+                <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/10 dark:bg-white/5 border border-white/10">
                   <div>
-                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">ZenQuotes.io</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">Daily inspirational quote — refreshes every 24 hours</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Show link titles</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">Toggle text titles below grid app cards</p>
                   </div>
+                  <ToggleSwitch enabled={settings.showLinkName} onToggle={toggleShowLinkName} />
                 </div>
               </div>
             </GlassCard>
@@ -144,181 +198,110 @@ export const OptionsApp: React.FC = () => {
       case 'appearance':
         return (
           <div className="flex flex-col gap-6">
-            <h2 className="text-2xl font-bold">Appearance</h2>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Appearance & Customization</h2>
             <GlassCard className="flex flex-col gap-5">
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">
-                  Glassmorphism Blur — {settings.glassBlur}px
+                  Glass Blur — {settings.glassBlur}px
                 </label>
                 <input
                   type="range"
                   min={0}
-                  max={30}
+                  max={40}
                   value={settings.glassBlur}
-                  onChange={(e) => updateSetting('glassBlur', parseInt(e.target.value))}
-                  className="w-full accent-accent-primary"
+                  onChange={(e) => setGlassBlur(parseInt(e.target.value))}
+                  className="w-full accent-blue-500"
                 />
               </div>
+
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">
-                  Glass Opacity — {Math.round(settings.glassOpacity * 100)}%
+                  Glass Card Opacity — {Math.round(settings.glassOpacity * 100)}%
                 </label>
                 <input
                   type="range"
-                  min={30}
-                  max={95}
+                  min={10}
+                  max={100}
+                  step={5}
                   value={Math.round(settings.glassOpacity * 100)}
-                  onChange={(e) => updateSetting('glassOpacity', parseInt(e.target.value) / 100)}
-                  className="w-full accent-accent-primary"
+                  onChange={(e) => setGlassOpacity(parseInt(e.target.value) / 100)}
+                  className="w-full accent-blue-500"
                 />
               </div>
-              {/* Live preview */}
+
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Live Preview</label>
-                <div className="glass rounded-2xl p-6 text-center text-sm font-semibold text-gray-700 dark:text-gray-200 border border-white/25 dark:border-white/10">
-                  This is a preview of your glass effect
+                <div className="glass-panel p-6 text-center text-sm font-semibold text-slate-700 dark:text-slate-200 border border-white/25 dark:border-white/10 rounded-2xl">
+                  Sample Glassmorphic Card Preview
                 </div>
               </div>
+
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Custom Wallpaper</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Custom Background Wallpaper</label>
                 <div className="flex flex-wrap items-center gap-3">
                   {settings.wallpaper && (
                     <div
-                      className="w-16 h-10 rounded-lg bg-cover bg-center border border-white/20"
+                      className="w-20 h-12 rounded-xl bg-cover bg-center border border-white/20 shadow-sm"
                       style={{ backgroundImage: `url(${settings.wallpaper})` }}
                     />
                   )}
                   <div>
-                    <GlassButton
-                      type="button"
-                      icon={<MdFileUpload />}
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      Upload Wallpaper
+                    <GlassButton type="button" icon={<MdFileUpload />} onClick={() => fileInputRef.current?.click()}>
+                      Upload Image
                     </GlassButton>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="sr-only"
-                      onChange={handleWallpaper}
-                    />
+                    <input ref={fileInputRef} type="file" accept="image/*" className="sr-only" onChange={handleWallpaper} />
                   </div>
                   {settings.wallpaper && (
-                    <GlassButton
-                      variant="danger"
-                      onClick={() => { updateSetting('wallpaper', null); showToast('Wallpaper cleared', 'info'); }}
-                    >
-                      Clear
+                    <GlassButton variant="danger" onClick={() => { setWallpaper(null); showToast('Wallpaper cleared', 'info'); }}>
+                      Clear Wallpaper
                     </GlassButton>
                   )}
                 </div>
-                <p className="text-xs text-gray-400 mt-2">Max file size: 5MB. Stored as base64 in localStorage.</p>
+                <p className="text-xs text-gray-400 mt-2">Upload a local image or clear current wallpaper.</p>
               </div>
             </GlassCard>
           </div>
         );
 
-      case 'links':
+      case 'bookmarks':
         return (
           <div className="flex flex-col gap-6">
-            <h2 className="text-2xl font-bold">Links & Data</h2>
-            <GlassCard className="flex flex-col gap-4">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Statistics</p>
-                <p className="text-3xl font-black text-accent-primary">{links.length}</p>
-                <p className="text-sm text-gray-500">total links saved</p>
-              </div>
-              <div className="border-t border-white/10 pt-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Per Category</p>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(
-                    links.reduce((acc: Record<string, number>, l) => {
-                      acc[l.category] = (acc[l.category] || 0) + 1;
-                      return acc;
-                    }, {})
-                  ).map(([cat, count]) => (
-                    <span key={cat} className="text-xs px-3 py-1 rounded-full glass border border-white/15 font-semibold">
-                      {cat}: <span className="text-accent-primary">{count}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </GlassCard>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Bookmarks & Data Management</h2>
+            
+            {/* 1-Click Browser Bookmark Import */}
             <GlassCard className="flex flex-col gap-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Import / Export</p>
-              <div className="flex flex-wrap gap-3">
-                <GlassButton icon={<MdFileDownload />} onClick={handleExport}>
-                  Export JSON
-                </GlassButton>
-                <GlassButton icon={<MdFileUpload />} onClick={handleImport}>
-                  Import JSON
-                </GlassButton>
+              <div className="flex items-center gap-2">
+                <MdBookmark className="w-5 h-5 text-emerald-500" />
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">1-Click Browser Bookmark Import</h3>
               </div>
-            </GlassCard>
-            <GlassCard className="flex flex-col gap-3 border-accent-danger/20">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-accent-danger">Danger Zone</p>
-              <GlassButton variant="danger" icon={<MdDelete />} onClick={handleReset}>
-                Reset All Data
+              <p className="text-xs text-gray-400">
+                Import your browser's existing bookmarks tree directly into your dashboard 3x4 grid slots. Requests browser permission dynamically if needed.
+              </p>
+              <GlassButton icon={<MdBookmark />} onClick={handleBookmarkImport}>
+                Import Bookmarks Now
               </GlassButton>
-              <p className="text-xs text-gray-400">This will permanently delete all links and reset all settings.</p>
-            </GlassCard>
-          </div>
-        );
-
-      case 'categories':
-        return (
-          <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Categories</h2>
-              <GlassButton variant="primary" icon={<MdAdd />} onClick={() => setIsAddCategoryOpen(true)}>
-                Add Category
-              </GlassButton>
-            </div>
-            {/* Custom categories */}
-            <GlassCard className="flex flex-col gap-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Custom Categories</p>
-              {Object.entries(categories).filter(([, data]) => !data.isBuiltIn).length === 0 ? (
-                <p className="text-sm italic text-gray-400">No custom categories yet.</p>
-              ) : (
-                Object.entries(categories)
-                  .filter(([, data]) => !data.isBuiltIn)
-                  .map(([name, data]) => (
-                    <div key={name} className="flex items-center justify-between p-3 rounded-xl glass border border-white/15">
-                      <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-base" style={{ backgroundColor: data.color }}>
-                          {data.icon.length <= 2 ? data.icon : '🔗'}
-                        </div>
-                        <span className="text-sm font-semibold capitalize">{name}</span>
-                      </div>
-                      <GlassButton
-                        variant="danger"
-                        onClick={() => {
-                          if (window.confirm(`Delete category "${name}"?`)) {
-                            deleteCustomCategory(name);
-                            showToast(`Category "${name}" deleted`, 'info');
-                          }
-                        }}
-                      >
-                        <MdDelete />
-                      </GlassButton>
-                    </div>
-                  ))
+              {importStatus && (
+                <p className="text-xs text-blue-500 font-medium mt-1 animate-fade-in">{importStatus}</p>
               )}
             </GlassCard>
-            {/* Built-in categories */}
+
+            {/* JSON Import & Export */}
             <GlassCard className="flex flex-col gap-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Built-in Categories (Read-only)</p>
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(categories)
-                  .filter(([, data]) => data.isBuiltIn)
-                  .map(([name, data]) => (
-                    <div key={name} className="flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-white/15 text-xs font-semibold">
-                      <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: data.color }} />
-                      <span className="capitalize">{name}</span>
-                    </div>
-                  ))}
+              <div className="flex items-center gap-2">
+                <MdStorage className="w-5 h-5 text-blue-500" />
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Dashboard Backup & Restore</h3>
               </div>
+              <div className="flex flex-wrap gap-3">
+                <GlassButton icon={<MdFileDownload />} onClick={handleExport}>Export Backup (JSON)</GlassButton>
+                <GlassButton icon={<MdFileUpload />} onClick={handleImport}>Restore Backup (JSON)</GlassButton>
+              </div>
+            </GlassCard>
+
+            {/* Danger Zone */}
+            <GlassCard className="flex flex-col gap-3 border-red-500/20">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-red-500">Danger Zone</p>
+              <GlassButton variant="danger" icon={<MdDelete />} onClick={handleReset}>Reset All Data & Settings</GlassButton>
+              <p className="text-xs text-gray-400">Permanently clears all links, folders, and restores default settings.</p>
             </GlassCard>
           </div>
         );
@@ -326,23 +309,21 @@ export const OptionsApp: React.FC = () => {
       case 'about':
         return (
           <div className="flex flex-col gap-6">
-            <h2 className="text-2xl font-bold">About</h2>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">About ProdX Dashboard</h2>
             <GlassCard className="flex flex-col gap-4">
               <div>
-                <h3 className="text-xl font-black bg-linear-to-r from-accent-primary to-accent-violet bg-clip-text text-transparent">New Tab Dashboard</h3>
+                <h3 className="text-xl font-black bg-linear-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">ProdX New Tab</h3>
                 <p className="text-sm text-gray-400 mt-0.5">Version 1.0.0</p>
               </div>
-              <ul className="text-sm text-gray-600 dark:text-gray-300 flex flex-col gap-1.5 list-disc list-inside">
-                <li>Glassmorphic dashboard replaces your new tab</li>
-                <li>Organize links by auto-detected categories</li>
-                <li>Live search across all your links</li>
-                <li>Multiple quote APIs with smart caching</li>
-                <li>Custom wallpaper support</li>
-                <li>Light, Dark, and Auto theme modes</li>
-                <li>Import / Export data as JSON</li>
+              <ul className="text-sm text-slate-700 dark:text-slate-300 flex flex-col gap-1.5 list-disc list-inside">
+                <li>Minimalist, OS-inspired 3x4 paged grid dashboard</li>
+                <li>Drag-to-merge smart folder engine with safe un-nesting</li>
+                <li>Top-left floating task manager & top-right options control panel</li>
+                <li>Customizable glassmorphism backdrop-blur, opacity, and wallpaper</li>
+                <li>1-Click browser bookmark importer</li>
               </ul>
               <div className="border-t border-white/10 pt-4 text-xs text-gray-400 leading-relaxed">
-                <strong>Privacy:</strong> All data is stored locally in your browser using IndexedDB and localStorage. No data is ever sent to any server except for fetching quotes.
+                <strong>Privacy First:</strong> All dashboard data is saved locally on your device via IndexedDB. No tracking or telemetry.
               </div>
             </GlassCard>
           </div>
@@ -362,21 +343,21 @@ export const OptionsApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
       {/* Sidebar */}
-      <aside className="w-56 shrink-0 border-r border-white/10 p-4 flex flex-col gap-1 sticky top-0 h-screen overflow-y-auto">
-        <div className="mb-4 px-2">
-          <h1 className="text-base font-black bg-linear-to-r from-accent-primary to-accent-violet bg-clip-text text-transparent">Dashboard</h1>
-          <p className="text-[10px] text-gray-400 mt-0.5">Settings</p>
+      <aside className="w-60 shrink-0 border-r border-slate-200/50 dark:border-white/10 p-5 flex flex-col gap-1 sticky top-0 h-screen overflow-y-auto bg-white/40 dark:bg-slate-900/40 backdrop-blur-lg">
+        <div className="mb-6 px-2">
+          <h1 className="text-lg font-black bg-linear-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">ProdX Dashboard</h1>
+          <p className="text-[11px] text-gray-400 mt-0.5">Control Panel & Settings</p>
         </div>
         {NAV_ITEMS.map((item) => (
           <button
             key={item.id}
             onClick={() => setActiveSection(item.id)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer text-left ${
+            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer text-left ${
               activeSection === item.id
-                ? 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30'
-                : 'hover:bg-white/10 dark:hover:bg-white/5 text-gray-600 dark:text-gray-400 hover:text-current border border-transparent'
+                ? 'bg-blue-500/15 text-blue-500 border border-blue-500/30'
+                : 'hover:bg-slate-200/50 dark:hover:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-transparent'
             }`}
           >
             <span className="text-lg">{item.icon}</span>
@@ -386,23 +367,13 @@ export const OptionsApp: React.FC = () => {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 p-8 overflow-y-auto max-w-3xl">
+      <main className="flex-1 p-8 overflow-y-auto max-w-4xl relative">
         {renderSection()}
-        <button className="mt-8 fixed top-5 right-5 m-4 z-50">
-          <GlassButton variant="danger" onClick={closeOptionsApp}>
-            Close Settings
-          </GlassButton>
+        <button className="fixed top-5 right-5 z-50">
+          <GlassButton variant="danger" onClick={closeOptionsApp}>Close Settings</GlassButton>
         </button>
       </main>
 
-      {/* Modals */}
-      <AddCategoryModal
-        isOpen={isAddCategoryOpen}
-        onClose={() => {
-          setIsAddCategoryOpen(false);
-          refreshCategories();
-        }}
-      />
       <ToastContainer />
     </div>
   );

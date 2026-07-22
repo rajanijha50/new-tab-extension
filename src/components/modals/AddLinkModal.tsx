@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { Modal } from '../ui/Modal';
-import { GlassInput, GlassSelect } from '../ui/GlassInput';
+import { GlassInput } from '../ui/GlassInput';
 import { GlassButton } from '../ui/GlassButton';
 import { useLinksStore } from '../../store/linksStore';
-import { useCategoriesStore } from '../../store/categoriesStore';
 import { useToastStore } from '../../store/toastStore';
-import { categorizer } from '../../services/categorizer';
 import LinkFormatter from '../../services/formatter';
 
 interface AddLinkModalProps {
@@ -14,15 +12,13 @@ interface AddLinkModalProps {
 }
 
 export const AddLinkModal: React.FC<AddLinkModalProps> = ({ isOpen, onClose }) => {
-  const { addLink } = useLinksStore();
-  const { categories } = useCategoriesStore();
+  const { links, addLink } = useLinksStore();
   const { showToast } = useToastStore();
 
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('');
-  const [category, setCategory] = useState('auto-detect');
   const [loading, setLoading] = useState(false);
 
   const handleUrlBlur = async () => {
@@ -66,11 +62,7 @@ export const AddLinkModal: React.FC<AddLinkModalProps> = ({ isOpen, onClose }) =
         normalizedUrl = 'https://' + normalizedUrl;
       }
 
-      const domain = categorizer.getDomain(normalizedUrl);
-      let selectedCategory = category;
-      if (selectedCategory === 'auto-detect') {
-        selectedCategory = categorizer.categorize(normalizedUrl);
-      }
+      const domain = new URL(normalizedUrl).hostname.replace(/^www\./i, '');
 
       let finalTitle = title.trim();
       let finalIcon = icon.trim();
@@ -83,25 +75,35 @@ export const AddLinkModal: React.FC<AddLinkModalProps> = ({ isOpen, onClose }) =
         if (!finalDesc) finalDesc = metadata.description;
       }
 
+      // Calculate position: find next available grid cell
+      const maxX = links.reduce((max, l) => (l.folderId === null && l.x > max ? l.x : max), -1);
+      const nextX = maxX + 1;
+      const cols = Math.floor(520 / 98); // approximate columns
+      const x = nextX % cols;
+      const y = Math.floor(nextX / cols);
+
       await addLink({
         url: normalizedUrl,
         title: finalTitle || domain,
         domain,
-        category: selectedCategory,
         timestamp: Date.now(),
         icon: finalIcon || LinkFormatter.getIconFromUrl(normalizedUrl),
         description: finalDesc,
+        folderId: null,
+        x,
+        y,
+        w: 1,
+        h: 1,
       });
 
-      showToast('Link added successfully', 'success');
+      showToast('Link added!', 'success');
       setUrl('');
       setTitle('');
       setDescription('');
       setIcon('');
-      setCategory('auto-detect');
       onClose();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to add link', 'error');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to add link', 'error');
     } finally {
       setLoading(false);
     }
@@ -116,7 +118,7 @@ export const AddLinkModal: React.FC<AddLinkModalProps> = ({ isOpen, onClose }) =
           </label>
           <GlassInput
             type="text"
-            placeholder="e.g. github.com/facebook"
+            placeholder="e.g. github.com"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onBlur={handleUrlBlur}
@@ -131,7 +133,7 @@ export const AddLinkModal: React.FC<AddLinkModalProps> = ({ isOpen, onClose }) =
           </label>
           <GlassInput
             type="text"
-            placeholder="e.g. GitHub"
+            placeholder="Auto-fetched from URL"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -143,38 +145,25 @@ export const AddLinkModal: React.FC<AddLinkModalProps> = ({ isOpen, onClose }) =
           </label>
           <GlassInput
             type="text"
-            placeholder="e.g. A premium dashboard extension"
+            placeholder="Brief description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
 
-        <div>
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
-            Category
-          </label>
-          <GlassSelect
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          >
-            <option value="auto-detect">✨ Auto-detect</option>
-            {Object.keys(categories).map((catName) => (
-              <option key={catName} value={catName}>
-                {catName
-                  .split('-')
-                  .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                  .join(' ')}
-              </option>
-            ))}
-          </GlassSelect>
-        </div>
+        {loading && (
+          <div className="flex items-center gap-2 text-xs text-accent-primary">
+            <div className="w-3 h-3 border-2 border-accent-primary/30 border-t-accent-primary rounded-full animate-spin" />
+            Fetching metadata...
+          </div>
+        )}
 
-        <div className="flex justify-end gap-3 mt-4">
+        <div className="flex justify-end gap-3 mt-2">
           <GlassButton type="button" onClick={onClose}>
             Cancel
           </GlassButton>
           <GlassButton type="submit" variant="primary" loading={loading}>
-            Save Link
+            Add Link
           </GlassButton>
         </div>
       </form>

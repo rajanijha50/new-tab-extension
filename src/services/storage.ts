@@ -1,15 +1,18 @@
 import { openDB, type IDBPDatabase } from 'idb';
-import type { Link } from '../types/link';
+import type { GridItem, LinkItem, FolderItem } from '../types/grid';
 import type { UserSettings } from '../types/settings';
+import type { Link } from '../types/link';
+import type { Folder } from '../types/folder';
 
-const DB_NAME = 'LinksDashboardDB';
+const DB_NAME = 'ProdXTabDB';
 const DB_VERSION = 1;
-const STORE_NAME = 'links';
+const GRID_STORE = 'grid_items';
 
 export interface ExportData {
-  links: Link[];
+  gridItems: GridItem[];
   preferences: UserSettings;
-  customCategories?: any;
+  links?: Link[];
+  folders?: Folder[];
 }
 
 class StorageManager {
@@ -19,14 +22,9 @@ class StorageManager {
     if (!this.dbPromise) {
       this.dbPromise = openDB(DB_NAME, DB_VERSION, {
         upgrade(db) {
-          if (!db.objectStoreNames.contains(STORE_NAME)) {
-            const store = db.createObjectStore(STORE_NAME, {
-              keyPath: 'id',
-              autoIncrement: true,
-            });
-            store.createIndex('category', 'category', { unique: false });
-            store.createIndex('domain', 'domain', { unique: false });
-            store.createIndex('timestamp', 'timestamp', { unique: false });
+          if (!db.objectStoreNames.contains(GRID_STORE)) {
+            const store = db.createObjectStore(GRID_STORE, { keyPath: 'id' });
+            store.createIndex('pageIndex', 'pageIndex', { unique: false });
           }
         },
       });
@@ -34,133 +32,33 @@ class StorageManager {
     return this.dbPromise;
   }
 
-  async addLink(link: Omit<Link, 'id'>): Promise<number> {
+  async getAllGridItems(): Promise<GridItem[]> {
     const db = await this.initDB();
-    const result = await db.add(STORE_NAME, link);
-    return result as number;
+    return db.getAll(GRID_STORE);
   }
 
-  async updateLink(id: number, data: Partial<Link>): Promise<void> {
+  async saveAllGridItems(items: GridItem[]): Promise<void> {
     const db = await this.initDB();
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    const existing = await store.get(id);
-    if (existing) {
-      await store.put({ ...existing, ...data });
+    const tx = db.transaction(GRID_STORE, 'readwrite');
+    await tx.objectStore(GRID_STORE).clear();
+    for (const item of items) {
+      await tx.objectStore(GRID_STORE).put(item);
     }
     await tx.done;
   }
 
-  async deleteLink(id: number): Promise<void> {
+  async saveGridItem(item: GridItem): Promise<void> {
     const db = await this.initDB();
-    return db.delete(STORE_NAME, id);
+    await db.put(GRID_STORE, item);
   }
 
-  async getLinkById(id: number): Promise<Link | undefined> {
+  async deleteGridItem(id: string): Promise<void> {
     const db = await this.initDB();
-    return db.get(STORE_NAME, id);
+    await db.delete(GRID_STORE, id);
   }
 
-  async getLinksByCategory(category: string): Promise<Link[]> {
-    const db = await this.initDB();
-    return db.getAllFromIndex(STORE_NAME, 'category', category);
-  }
-
-  async getAllLinks(): Promise<Link[]> {
-    const db = await this.initDB();
-    return db.getAll(STORE_NAME);
-  }
-
-  async getAllLinksByCategory(): Promise<Record<string, Link[]>> {
-    const links = await this.getAllLinks();
-    const map: Record<string, Link[]> = {};
-    for (const link of links) {
-      if (!map[link.category]) {
-        map[link.category] = [];
-      }
-      map[link.category].push(link);
-    }
-    return map;
-  }
-
-  async searchLinks(query: string): Promise<Link[]> {
-    const links = await this.getAllLinks();
-    const cleanQuery = query.toLowerCase().trim();
-    if (!cleanQuery) return links;
-    return links.filter(
-      (l) =>
-        l.title.toLowerCase().includes(cleanQuery) ||
-        l.domain.toLowerCase().includes(cleanQuery) ||
-        l.url.toLowerCase().includes(cleanQuery)
-    );
-  }
-
-  async clearAllLinks(): Promise<void> {
-    const db = await this.initDB();
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    await tx.objectStore(STORE_NAME).clear();
-    await tx.done;
-  }
-
-  async getStats(): Promise<{ totalLinks: number; byCategory: Record<string, number> }> {
-    const links = await this.getAllLinks();
-    const byCategory: Record<string, number> = {};
-    for (const link of links) {
-      byCategory[link.category] = (byCategory[link.category] || 0) + 1;
-    }
-    return {
-      totalLinks: links.length,
-      byCategory,
-    };
-  }
-
-  async exportData(): Promise<ExportData> {
-    const links = await this.getAllLinks();
-    const preferences = this.getAllPreferences();
-    const customCategoriesStr = localStorage.getItem('custom_categories');
-    const customCategories = customCategoriesStr ? JSON.parse(customCategoriesStr) : {};
-    return { links, preferences, customCategories };
-  }
-
-  async importData(data: ExportData): Promise<{ linksImported: number }> {
-    await this.clearAllLinks();
-    const db = await this.initDB();
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    let count = 0;
-    if (data.links && Array.isArray(data.links)) {
-      for (const link of data.links) {
-        const { id, ...linkData } = link;
-        await store.add(linkData);
-        count++;
-      }
-    }
-    await tx.done;
-
-    if (data.preferences) {
-      for (const key of Object.keys(data.preferences) as Array<keyof UserSettings>) {
-        this.setPreference(key, data.preferences[key]);
-      }
-    }
-
-    if (data.customCategories) {
-      localStorage.setItem('custom_categories', JSON.stringify(data.customCategories));
-    }
-
-    return { linksImported: count };
-  }
-
-  async reset(): Promise<void> {
-    await this.clearAllLinks();
-    localStorage.removeItem('pref_theme');
-    localStorage.removeItem('custom_categories');
-    const prefKeys: Array<keyof UserSettings> = ['theme', 'glassBlur', 'glassOpacity', 'wallpaper'];
-    for (const key of prefKeys) {
-      localStorage.removeItem(`pref_${key}`);
-    }
-  }
-
-  setPreference<T>(key: keyof UserSettings, value: T): void {
+  // Preferences
+  setPreference<T>(key: string, value: T): void {
     if (value === null || value === undefined) {
       localStorage.removeItem(`pref_${key}`);
     } else {
@@ -168,24 +66,150 @@ class StorageManager {
     }
   }
 
-  getPreference<T>(key: keyof UserSettings, defaultValue: T): T {
+  getPreference<T>(key: string, defaultValue: T): T {
     const val = localStorage.getItem(`pref_${key}`);
     if (val === null) return defaultValue;
     try {
       return JSON.parse(val) as T;
     } catch {
-      return val as unknown as T;
+      return defaultValue;
     }
   }
 
-  private getAllPreferences(): UserSettings {
-    return {
+  // Legacy compatibility helpers for options / legacy stores
+  async getAllLinks(): Promise<Link[]> {
+    const items = await this.getAllGridItems();
+    const links: Link[] = [];
+    items.forEach((item) => {
+      if (item.type === 'link') {
+        links.push({
+          id: Math.abs(hashCode(item.id)),
+          title: item.title,
+          url: item.url,
+          domain: item.title,
+          icon: item.faviconUrl,
+          timestamp: Date.now(),
+          x: item.gridIndex,
+          y: item.pageIndex,
+          w: 1,
+          h: 1,
+          folderId: null,
+        });
+      } else if (item.type === 'folder') {
+        item.children.forEach((child) => {
+          links.push({
+            id: Math.abs(hashCode(child.id)),
+            title: child.title,
+            url: child.url,
+            domain: child.title,
+            icon: child.faviconUrl,
+            timestamp: Date.now(),
+            x: 0,
+            y: 0,
+            w: 1,
+            h: 1,
+            folderId: Math.abs(hashCode(item.id)),
+          });
+        });
+      }
+    });
+    return links;
+  }
+
+  async getAllFolders(): Promise<Folder[]> {
+    const items = await this.getAllGridItems();
+    return items
+      .filter((i): i is FolderItem => i.type === 'folder')
+      .map((item) => ({
+        id: Math.abs(hashCode(item.id)),
+        name: item.title,
+        icon: 'MdFolder',
+        color: '#8b5cf6',
+        timestamp: Date.now(),
+        x: item.gridIndex,
+        y: item.pageIndex,
+        w: 1,
+        h: 1,
+      }));
+  }
+
+  async addLink(link: Omit<Link, 'id'>): Promise<number> {
+    const items = await this.getAllGridItems();
+    const newLinkItem: LinkItem = {
+      id: crypto.randomUUID(),
+      type: 'link',
+      title: link.title || 'Link',
+      url: link.url,
+      faviconUrl: link.icon || '',
+      pageIndex: 0,
+      gridIndex: items.length % 12,
+    };
+    items.push(newLinkItem);
+    await this.saveAllGridItems(items);
+    return Math.abs(hashCode(newLinkItem.id));
+  }
+
+  async updateLink(_id: number, _data: Partial<Link>): Promise<void> {}
+
+  async deleteLink(_id: number): Promise<void> {}
+
+  async addFolder(folder: Omit<Folder, 'id'>): Promise<number> {
+    const items = await this.getAllGridItems();
+    const newFolderItem: FolderItem = {
+      id: crypto.randomUUID(),
+      type: 'folder',
+      title: folder.name || 'Folder',
+      children: [],
+      pageIndex: 0,
+      gridIndex: items.length % 12,
+    };
+    items.push(newFolderItem);
+    await this.saveAllGridItems(items);
+    return Math.abs(hashCode(newFolderItem.id));
+  }
+
+  async updateFolder(_id: number, _data: Partial<Folder>): Promise<void> {}
+
+  async deleteFolder(_id: number): Promise<void> {}
+
+  async exportData(): Promise<ExportData> {
+    const gridItems = await this.getAllGridItems();
+    const preferences: UserSettings = {
       theme: this.getPreference<UserSettings['theme']>('theme', 'auto'),
       glassBlur: this.getPreference<UserSettings['glassBlur']>('glassBlur', 10),
       glassOpacity: this.getPreference<UserSettings['glassOpacity']>('glassOpacity', 0.7),
       wallpaper: this.getPreference<UserSettings['wallpaper']>('wallpaper', null),
+      showLinkName: this.getPreference<UserSettings['showLinkName']>('showLinkName', true),
     };
+    return { gridItems, preferences };
   }
+
+  async importData(data: ExportData): Promise<{ linksImported: number; foldersImported: number }> {
+    if (data.gridItems) {
+      await this.saveAllGridItems(data.gridItems);
+    }
+    if (data.preferences) {
+      for (const key of Object.keys(data.preferences) as Array<keyof UserSettings>) {
+        this.setPreference(key, (data.preferences as unknown as Record<string, unknown>)[key as string] as never);
+      }
+    }
+    return { linksImported: data.gridItems?.length || 0, foldersImported: 0 };
+  }
+
+  async reset(): Promise<void> {
+    await this.saveAllGridItems([]);
+    localStorage.clear();
+  }
+}
+
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return hash;
 }
 
 export const storage = new StorageManager();

@@ -1,16 +1,19 @@
 import React, { useEffect } from 'react';
 import { useLinksStore } from '../store/linksStore';
+import { useFoldersStore } from '../store/foldersStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { MdOpenInNew, MdSettings } from 'react-icons/md';
 
 export const PopupApp: React.FC = () => {
   const { links, fetchAllLinks } = useLinksStore();
+  const { folders, fetchAllFolders } = useFoldersStore();
   const { loadSettings } = useSettingsStore();
 
   useEffect(() => {
     loadSettings();
     fetchAllLinks();
-  }, [loadSettings, fetchAllLinks]);
+    fetchAllFolders();
+  }, [loadSettings, fetchAllLinks, fetchAllFolders]);
 
   const openNewTab = () => {
     if (typeof chrome !== 'undefined' && chrome.tabs) {
@@ -27,16 +30,6 @@ export const PopupApp: React.FC = () => {
       window.open('/src/pages/options/index.html', '_blank');
     }
   };
-
-  // Top 3 categories by link count
-  const categoryCount = links.reduce((acc: Record<string, number>, link) => {
-    acc[link.category] = (acc[link.category] || 0) + 1;
-    return acc;
-  }, {});
-
-  const topCategories = Object.entries(categoryCount)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 3);
 
   return (
     <div className="w-[350px] min-h-[280px] flex flex-col p-5 gap-4 font-sans bg-(--bg-primary) text-(--text-primary) transition-colors duration-300">
@@ -55,17 +48,10 @@ export const PopupApp: React.FC = () => {
           <span className="text-xs text-gray-400 font-semibold uppercase tracking-widest">Total Links</span>
           <span className="text-2xl font-black text-accent-primary">{links.length}</span>
         </div>
-        {topCategories.length > 0 && (
-          <div className="flex flex-col gap-1.5">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Top Categories</p>
-            {topCategories.map(([cat, count]) => (
-              <div key={cat} className="flex items-center justify-between text-xs">
-                <span className="capitalize font-semibold text-gray-600 dark:text-gray-300">{cat}</span>
-                <span className="font-bold text-accent-secondary">{count}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-400 font-semibold uppercase tracking-widest">Folders</span>
+          <span className="text-2xl font-black text-accent-violet">{folders.length}</span>
+        </div>
       </div>
 
       {/* Actions */}

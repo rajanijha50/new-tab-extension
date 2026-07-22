@@ -27,65 +27,50 @@ export const Header: React.FC<HeaderProps> = ({
 
   const getThemeIcon = () => {
     switch (settings.theme) {
-      case 'light':
-        return <MdLightMode className="text-xl" />;
-      case 'dark':
-        return <MdDarkMode className="text-xl" />;
-      default:
-        return <MdAutorenew className="text-xl animate-spin-slow" />;
-    }
-  };
-
-  const getThemeLabel = () => {
-    switch (settings.theme) {
-      case 'light':
-        return 'Theme: Light';
-      case 'dark':
-        return 'Theme: Dark';
-      default:
-        return 'Theme: Auto (System)';
+      case 'light': return <MdLightMode className="text-lg" />;
+      case 'dark': return <MdDarkMode className="text-lg" />;
+      default: return <MdAutorenew className="text-lg animate-spin-slow" />;
     }
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full px-6 py-4 flex items-center justify-between backdrop-blur-xl bg-white/60 dark:bg-black/40 border-b border-white/15 dark:border-white/8 shadow-sm shadow-black/5 dark:shadow-black/20">
-      {/* Left: Title + optional slot */}
-      <div className="flex items-center gap-3 shrink-0">
+    <header className="sticky top-0 z-40 w-full px-4 py-3 flex items-center justify-between gap-3 backdrop-blur-2xl bg-white/50 dark:bg-black/35 border-b border-white/12 dark:border-white/6">
+      {/* Left: Todo + Title */}
+      <div className="flex items-center gap-2.5 shrink-0">
         {leftSlot}
-        <h1 className="text-2xl font-black tracking-wide bg-linear-to-r from-accent-primary via-accent-violet to-accent-rose bg-clip-text text-transparent">
-          Extention
+        <h1 className="text-lg font-extrabold tracking-tight bg-linear-to-r from-accent-primary via-accent-violet to-accent-rose bg-clip-text text-transparent hidden sm:block">
+          Dashboard
         </h1>
       </div>
 
       {/* Search */}
-      <div className="flex-1 max-w-md mx-6">
+      <div className="flex-1 max-w-xs mx-2">
         <GlassInput
           type="text"
-          placeholder="Search links, domains, or categories..."
+          placeholder="Search..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="py-2 text-sm"
+          className="py-1.5 text-xs rounded-xl"
         />
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2.5 shrink-0">
+      <div className="flex items-center gap-1.5 shrink-0">
         <button
           onClick={handleThemeToggle}
-          className="p-2.5 rounded-xl glass hover:bg-white/25 dark:hover:bg-white/10 text-current transition-all duration-200 cursor-pointer active:scale-95"
-          title={getThemeLabel()}
+          className="p-2 rounded-xl glass hover:bg-white/25 dark:hover:bg-white/10 text-current transition-all duration-200 cursor-pointer active:scale-95"
+          title={`Theme: ${settings.theme}`}
           aria-label="Toggle theme"
         >
           {getThemeIcon()}
         </button>
-
         <button
           onClick={onSettingsClick}
-          className="p-2.5 rounded-xl glass hover:bg-white/25 dark:hover:bg-white/10 text-current transition-all duration-200 cursor-pointer active:scale-95"
-          title="Open settings"
-          aria-label="Open settings"
+          className="p-2 rounded-xl glass hover:bg-white/25 dark:hover:bg-white/10 text-current transition-all duration-200 cursor-pointer active:scale-95"
+          title="Settings"
+          aria-label="Settings"
         >
-          <IoSettingsSharp className="text-xl" />
+          <IoSettingsSharp className="text-lg" />
         </button>
       </div>
     </header>

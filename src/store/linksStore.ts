@@ -4,37 +4,27 @@ import { storage } from '../services/storage';
 
 interface LinksState {
   links: Link[];
-  linksByCategory: Record<string, Link[]>;
+  homeLinks: Link[];
   isLoading: boolean;
   fetchAllLinks: () => Promise<void>;
-  addLink: (link: Omit<Link, 'id'>) => Promise<void>;
+  addLink: (link: Omit<Link, 'id'>) => Promise<number>;
   updateLink: (id: number, data: Partial<Link>) => Promise<void>;
   deleteLink: (id: number) => Promise<void>;
-  searchLinks: (query: string) => Link[];
+  getLinksInFolder: (folderId: number) => Link[];
+  updatePositions: (updates: { id: number; x: number; y: number }[]) => Promise<void>;
 }
 
 export const useLinksStore = create<LinksState>((set, get) => ({
   links: [],
-  linksByCategory: {},
+  homeLinks: [],
   isLoading: false,
 
   fetchAllLinks: async () => {
     set({ isLoading: true });
     try {
       const links = await storage.getAllLinks();
-      
-      // Compute links by category map manually to ensure all categories from categorizer exist
-      const linksByCategory: Record<string, Link[]> = {};
-      
-      // Initialize with empty arrays for all links categories
-      for (const link of links) {
-        if (!linksByCategory[link.category]) {
-          linksByCategory[link.category] = [];
-        }
-        linksByCategory[link.category].push(link);
-      }
-      
-      set({ links, linksByCategory, isLoading: false });
+      const homeLinks = links.filter((l: Link) => l.folderId === null || l.folderId === undefined);
+      set({ links, homeLinks, isLoading: false });
     } catch (e) {
       console.error('Failed to fetch links:', e);
       set({ isLoading: false });
@@ -42,8 +32,9 @@ export const useLinksStore = create<LinksState>((set, get) => ({
   },
 
   addLink: async (linkData) => {
-    await storage.addLink(linkData);
+    const id = await storage.addLink(linkData);
     await get().fetchAllLinks();
+    return id;
   },
 
   updateLink: async (id, data) => {
@@ -56,14 +47,16 @@ export const useLinksStore = create<LinksState>((set, get) => ({
     await get().fetchAllLinks();
   },
 
-  searchLinks: (query) => {
-    const cleanQuery = query.toLowerCase().trim();
-    if (!cleanQuery) return get().links;
-    return get().links.filter(
-      (l) =>
-        l.title.toLowerCase().includes(cleanQuery) ||
-        l.domain.toLowerCase().includes(cleanQuery) ||
-        l.url.toLowerCase().includes(cleanQuery)
-    );
+  getLinksInFolder: (folderId) => {
+    return get().links.filter((l: Link) => l.folderId === folderId);
+  },
+
+  updatePositions: async (updates) => {
+    for (const u of updates) {
+      await storage.updateLink(u.id, { x: u.x, y: u.y });
+    }
+    await get().fetchAllLinks();
   },
 }));
+
+export default useLinksStore;

@@ -10,6 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@tailwindcss/vite": "^4.3.1",
     "clsx": "^2.1.1",
     "idb": "^8.0.3",
@@ -17,6 +20,7 @@
     "react-dom": "^19.2.6",
     "react-icons": "^5.6.0",
     "tailwindcss": "^4.3.1",
+    "webextension-polyfill": "^0.12.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
@@ -26,6 +30,7 @@
     "@types/node": "^24.12.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/webextension-polyfill": "^0.12.5",
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
