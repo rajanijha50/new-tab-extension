@@ -11,7 +11,7 @@ export async function fetchUrlMetadata(inputUrl: string): Promise<UrlMetadata> {
     urlString = `https://${urlString}`;
   }
 
-  let domain = '';
+  let domain: string;
   try {
     const parsed = new URL(urlString);
     domain = parsed.hostname.replace(/^www\./i, '');

@@ -1,7 +1,7 @@
 import React from 'react';
 import clsx from 'clsx';
 
-interface GlassInputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
+type GlassInputProps = React.InputHTMLAttributes<HTMLInputElement>;
 
 export const GlassInput = React.forwardRef<HTMLInputElement, GlassInputProps>(
   ({ className, ...props }, ref) => {

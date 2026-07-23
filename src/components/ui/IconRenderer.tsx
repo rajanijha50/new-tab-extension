@@ -11,18 +11,15 @@ interface IconRendererProps {
 }
 
 export const IconRenderer: React.FC<IconRendererProps> = ({ name, className, style }) => {
-  if (name.startsWith('Fa')) {
-    const IconComponent = (Fa as any)[name];
-    if (IconComponent) return <IconComponent className={className} style={style} />;
-  } else if (name.startsWith('Md')) {
-    const IconComponent = (Md as any)[name];
-    if (IconComponent) return <IconComponent className={className} style={style} />;
-  } else if (name.startsWith('Io')) {
-    const IconComponent = (Io5 as any)[name];
-    if (IconComponent) return <IconComponent className={className} style={style} />;
-  } else if (name.startsWith('Tb')) {
-    const IconComponent = (Tb as any)[name];
-    if (IconComponent) return <IconComponent className={className} style={style} />;
+  // Use dynamic import lookup to avoid lint warnings about creating components during render
+  const modules = { Fa, Md, Io5, Tb };
+  
+  for (const [prefix, module] of Object.entries(modules)) {
+    if (name.startsWith(prefix)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const IconComponent = (module as any)[name];
+      if (IconComponent) return <IconComponent className={className} style={style} />;
+    }
   }
 
   // Fallback if not found or if name is a plain emoji

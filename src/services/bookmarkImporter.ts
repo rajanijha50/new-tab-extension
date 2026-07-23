@@ -75,18 +75,19 @@ export function convertBookmarksToGridItems(bookmarkNodes: BookmarkNode[]): Grid
       const folderChildren: LinkItem[] = [];
       for (const child of node.children) {
         if (child.url) {
-          let domain = '';
+          let faviconUrl = '';
           try {
-            domain = new URL(child.url).hostname.replace(/^www\./i, '');
+            const domain = new URL(child.url).hostname.replace(/^www\./i, '');
+            faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
           } catch {
-            domain = child.url;
+            // faviconUrl remains empty
           }
           folderChildren.push({
             id: crypto.randomUUID(),
             type: 'link',
-            title: child.title || domain || 'Link',
+            title: child.title || 'Link',
             url: child.url,
-            faviconUrl: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`,
+            faviconUrl,
             pageIndex: 0,
             gridIndex: 0,
           });
@@ -107,19 +108,20 @@ export function convertBookmarksToGridItems(bookmarkNodes: BookmarkNode[]): Grid
       }
     } else if (node.url) {
       // Loose link
-      let domain = '';
+      let faviconUrl = '';
       try {
-        domain = new URL(node.url).hostname.replace(/^www\./i, '');
+        const domain = new URL(node.url).hostname.replace(/^www\./i, '');
+        faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
       } catch {
-        domain = node.url;
+        // faviconUrl remains empty
       }
 
       const linkItem: LinkItem = {
         id: crypto.randomUUID(),
         type: 'link',
-        title: node.title || domain || 'Link',
+        title: node.title || 'Link',
         url: node.url,
-        faviconUrl: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`,
+        faviconUrl,
         pageIndex: currentPage,
         gridIndex: currentGridIdx,
       };

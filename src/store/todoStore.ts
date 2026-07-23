@@ -1,1 +1,4 @@
-export { useTodosStore, useTodosStore as useTodoStore } from './todosStore';
+import { useTodosStore } from './todosStore';
+
+export const useTodoStore = useTodosStore;
+export { useTodosStore };

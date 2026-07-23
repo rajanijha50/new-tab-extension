@@ -293,7 +293,7 @@ export const useGridStore = create<GridState>((set, get) => ({
 
     const childrenToRestore = folder.children;
     // Remove folder from items
-    let currentGrid = items.filter((i) => i.id !== folderId);
+    const currentGrid = items.filter((i) => i.id !== folderId);
 
     // Place each child in next available slot
     for (const child of childrenToRestore) {

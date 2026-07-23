@@ -1,19 +1,19 @@
 import React, { useEffect } from 'react';
-import { useLinksStore } from '../store/linksStore';
-import { useFoldersStore } from '../store/foldersStore';
+import { useGridStore } from '../store/gridStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { MdOpenInNew, MdSettings } from 'react-icons/md';
 
 export const PopupApp: React.FC = () => {
-  const { links, fetchAllLinks } = useLinksStore();
-  const { folders, fetchAllFolders } = useFoldersStore();
+  const { items, loadItems } = useGridStore();
   const { loadSettings } = useSettingsStore();
 
   useEffect(() => {
     loadSettings();
-    fetchAllLinks();
-    fetchAllFolders();
-  }, [loadSettings, fetchAllLinks, fetchAllFolders]);
+    loadItems();
+  }, [loadSettings, loadItems]);
+
+  const links = items.filter((i) => i.type === 'link');
+  const folders = items.filter((i) => i.type === 'folder');
 
   const openNewTab = () => {
     if (typeof chrome !== 'undefined' && chrome.tabs) {
