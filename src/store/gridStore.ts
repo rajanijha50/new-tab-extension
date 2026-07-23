@@ -169,11 +169,11 @@ export const useGridStore = create<GridState>((set, get) => ({
     if (!sourceLink || !targetLink || sourceLinkId === targetLinkId) return;
 
     // Create folder at target position
-    const folderTitle = targetLink.title ? `${targetLink.title} & more` : 'New Folder';
+    const folderId = crypto.randomUUID()
     const newFolder: FolderItem = {
-      id: crypto.randomUUID(),
+      id: folderId,
       type: 'folder',
-      title: folderTitle,
+      title: 'Folder' + folderId.slice(0,4),
       pageIndex: targetLink.pageIndex,
       gridIndex: targetLink.gridIndex,
       children: [targetLink, sourceLink],
