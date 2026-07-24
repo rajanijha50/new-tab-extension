@@ -52,7 +52,7 @@ export const GridFolderItem: React.FC<GridFolderItemProps> = ({ folder, onOpenFo
       onClick={() => {
         if (!isEditing && !showMenu) onOpenFolder(folder);
       }}
-      className={`relative group flex flex-col items-center justify-center p-2 rounded-2xl glass-card cursor-pointer select-none w-22 h-24 touch-none transition-all hover:scale-105 ${
+      className={`relative group flex flex-col items-center justify-center p-2 rounded-2xl glass-panel cursor-pointer select-none w-22 h-24 touch-none transition-all hover:scale-105 ${
         isMergeTarget
           ? 'ring-4 ring-purple-500 ring-offset-2 scale-110 shadow-[0_0_25px_rgba(168,85,247,0.6)] bg-purple-500/20 z-30'
           : ''

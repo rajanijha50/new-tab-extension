@@ -13,6 +13,7 @@ import { FiGlobe, FiX, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import type { LinkItem, FolderItem } from '../../types/grid';
 import { useGridStore } from '../../store/gridStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { FaGripVertical } from 'react-icons/fa';
 
 interface FolderGridProps {
   folder: FolderItem;
@@ -37,11 +38,19 @@ const DraggableFolderLink: React.FC<{ link: LinkItem; folderId: string }> = ({ l
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      onClick={() => window.open(link.url, '_blank')}
       className="relative group flex flex-col items-center justify-center p-2 rounded-2xl glass-card cursor-pointer select-none w-[80px] h-[88px] touch-none transition-all hover:scale-105"
     >
+      {/* Drag handle - separate from click target */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded transition-opacity z-10"
+        title="Drag to reorder"
+        aria-label="Drag to reorder"
+      >
+        <FaGripVertical className="w-4 h-4" />
+      </button>
+
       {/* Remove from folder button */}
       <button
         onClick={(e) => {
@@ -54,19 +63,25 @@ const DraggableFolderLink: React.FC<{ link: LinkItem; folderId: string }> = ({ l
         <FiX className="w-3 h-3" />
       </button>
 
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/70 dark:bg-slate-800/70 shadow-sm border border-white/20 mb-1 overflow-hidden">
-        {link.faviconUrl ? (
-          <img src={link.faviconUrl} alt="" className="w-6 h-6 object-contain" />
-        ) : (
-          <FiGlobe className="w-5 h-5 text-blue-500" />
+      {/* Clickable area to open link - separate from drag handle */}
+      <div
+        onClick={() => window.open(link.url, '_blank')}
+        className="w-full h-full flex flex-col items-center justify-center gap-1"
+      >
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/70 dark:bg-slate-800/70 shadow-sm border border-white/20 overflow-hidden">
+          {link.faviconUrl ? (
+            <img src={link.faviconUrl} alt="" className="w-6 h-6 object-contain" />
+          ) : (
+            <FiGlobe className="w-5 h-5 text-blue-500" />
+          )}
+        </div>
+
+        {settings.showLinkName && (
+          <span className="text-[10px] font-medium text-slate-700 dark:text-slate-200 text-center truncate max-w-full px-0.5">
+            {link.title}
+          </span>
         )}
       </div>
-
-      {settings.showLinkName && (
-        <span className="text-[10px] font-medium text-slate-700 dark:text-slate-200 text-center truncate max-w-full px-0.5">
-          {link.title}
-        </span>
-      )}
     </div>
   );
 };

@@ -54,7 +54,7 @@ export const GridLinkItem: React.FC<GridLinkItemProps> = ({ link, isMergeTarget 
       {...attributes}
       {...listeners}
       onClick={handleOpenLink}
-      className={`relative group flex flex-col items-center justify-center p-2 rounded-2xl glass-card cursor-pointer select-none w-22 h-24 touch-none transition-all hover:scale-105 ${
+      className={`relative group flex flex-col items-center justify-center p-2 rounded-2xl glass-panel cursor-pointer select-none w-22 h-24 touch-none transition-all hover:scale-105 ${
         isMergeTarget
           ? 'ring-4 ring-blue-500 ring-offset-2 scale-110 shadow-[0_0_25px_rgba(59,130,246,0.6)] bg-blue-500/20 z-30'
           : ''
@@ -82,7 +82,7 @@ export const GridLinkItem: React.FC<GridLinkItemProps> = ({ link, isMergeTarget 
       {showMenu && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute top-7 right-1 z-30 w-32 glass-panel p-1 shadow-xl border border-white/20 animate-scale-in"
+          className="absolute top-7 right-1 z-30 w-32 glass-card p-1 shadow-xl border border-white/20 animate-scale-in"
         >
           <button
             onClick={() => {

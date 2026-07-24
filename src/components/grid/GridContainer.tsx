@@ -22,7 +22,7 @@ interface GridContainerProps {
   onOpenFolder: (folder: FolderItem) => void;
 }
 
-const MERGE_RADIUS_PX = 30; // Defined inner center distance radius threshold in pixels
+const MERGE_RADIUS_PX = 10; // Defined inner center distance radius threshold in pixels
 
 export const GridContainer: React.FC<GridContainerProps> = ({ onOpenFolder }) => {
   const { items, currentPage, setCurrentPage, moveItem, mergeLinksIntoFolder, addItemToFolder } = useGridStore();

@@ -45,6 +45,39 @@ function findNextAvailablePosition(items: GridItem[]): { pageIndex: number; grid
   }
 }
 
+function reflowItems(items: GridItem[]): GridItem[] {
+  const itemsByPage = new Map<number, GridItem[]>();
+  for (const item of items) {
+    if (!itemsByPage.has(item.pageIndex)) {
+      itemsByPage.set(item.pageIndex, []);
+    }
+    itemsByPage.get(item.pageIndex)!.push(item);
+  }
+
+  const maxPage = Math.max(...itemsByPage.keys(), -1);
+  const result: GridItem[] = [];
+
+  for (let page = 0; page <= maxPage; page++) {
+    const pageItems = itemsByPage.get(page) || [];
+    const sortedItems = [...pageItems].sort((a, b) => a.gridIndex - b.gridIndex);
+    
+    for (let i = 0; i < sortedItems.length; i++) {
+      result.push({
+        ...sortedItems[i],
+        pageIndex: page,
+        gridIndex: i,
+      });
+    }
+  }
+
+  const lastPage = result.filter((i) => i.pageIndex === maxPage);
+  if (lastPage.length === 0 && maxPage > 0) {
+    return result.filter((i) => i.pageIndex < maxPage);
+  }
+
+  return result;
+}
+
 export const useGridStore = create<GridState>((set, get) => ({
   items: [],
   currentPage: 0,
@@ -118,8 +151,9 @@ export const useGridStore = create<GridState>((set, get) => ({
     }
 
     const updated = items.filter((i) => i.id !== id);
-    set({ items: updated });
-    await storage.saveAllGridItems(updated);
+    const reflowed = reflowItems(updated);
+    set({ items: reflowed });
+    await storage.saveAllGridItems(reflowed);
   },
 
   updateItemTitle: async (id: string, newTitle: string) => {
@@ -129,7 +163,7 @@ export const useGridStore = create<GridState>((set, get) => ({
     await storage.saveAllGridItems(updated);
   },
 
-  // Move or swap items across 3x4 grid slots
+  // Move item using shift logic (not swap) - items shift to fill the gap
   moveItem: async (activeId: string, overId: string) => {
     const { items } = get();
     const activeItem = items.find((i) => i.id === activeId);
@@ -137,24 +171,38 @@ export const useGridStore = create<GridState>((set, get) => ({
 
     if (!activeItem || !overItem || activeId === overId) return;
 
-    // Swap pageIndex and gridIndex between the two items
-    const updated = items.map((item) => {
-      if (item.id === activeId) {
-        return {
-          ...item,
-          pageIndex: overItem.pageIndex,
-          gridIndex: overItem.gridIndex,
-        };
-      }
-      if (item.id === overId) {
-        return {
-          ...item,
-          pageIndex: activeItem.pageIndex,
-          gridIndex: activeItem.gridIndex,
-        };
-      }
-      return item;
+    const activePage = activeItem.pageIndex;
+    const activeGrid = activeItem.gridIndex;
+    const overPage = overItem.pageIndex;
+    const overGrid = overItem.gridIndex;
+
+    // Convert to linear index across all pages
+    const activeLinear = activePage * ITEMS_PER_PAGE + activeGrid;
+    const overLinear = overPage * ITEMS_PER_PAGE + overGrid;
+
+    // Create a flat array of all items sorted by their linear position
+    const sortedItems = [...items].sort((a, b) => {
+      const aLinear = a.pageIndex * ITEMS_PER_PAGE + a.gridIndex;
+      const bLinear = b.pageIndex * ITEMS_PER_PAGE + b.gridIndex;
+      return aLinear - bLinear;
     });
+
+    // Find indices in the sorted array
+    const fromIndex = sortedItems.findIndex((i) => i.id === activeId);
+    const toIndex = sortedItems.findIndex((i) => i.id === overId);
+
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    // Remove the active item and insert at target position (shift logic)
+    const [movedItem] = sortedItems.splice(fromIndex, 1);
+    sortedItems.splice(toIndex, 0, movedItem);
+
+    // Reassign pageIndex and gridIndex based on new positions
+    const updated = sortedItems.map((item, index) => ({
+      ...item,
+      pageIndex: Math.floor(index / ITEMS_PER_PAGE),
+      gridIndex: index % ITEMS_PER_PAGE,
+    }));
 
     set({ items: updated });
     await storage.saveAllGridItems(updated);
@@ -205,8 +253,9 @@ export const useGridStore = create<GridState>((set, get) => ({
       .filter((i) => i.id !== linkId)
       .map((i) => (i.id === folderId ? updatedFolder : i));
 
-    set({ items: updated });
-    await storage.saveAllGridItems(updated);
+    const reflowed = reflowItems(updated);
+    set({ items: reflowed });
+    await storage.saveAllGridItems(reflowed);
   },
 
   // Remove link from folder and restore to main grid
@@ -251,8 +300,9 @@ export const useGridStore = create<GridState>((set, get) => ({
         .concat(restoredLink);
     }
 
-    set({ items: updated });
-    await storage.saveAllGridItems(updated);
+    const reflowed = reflowItems(updated);
+    set({ items: reflowed });
+    await storage.saveAllGridItems(reflowed);
   },
 
   // Inner folder reordering
@@ -306,7 +356,8 @@ export const useGridStore = create<GridState>((set, get) => ({
       currentGrid.push(restoredLink);
     }
 
-    set({ items: currentGrid });
-    await storage.saveAllGridItems(currentGrid);
+    const reflowed = reflowItems(currentGrid);
+    set({ items: reflowed });
+    await storage.saveAllGridItems(reflowed);
   },
 }));
